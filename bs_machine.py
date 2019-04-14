@@ -24,8 +24,9 @@ com =''
 CHA = []; CHB= []
 
 userParam = {"testMode":"", "isDual":False, "isLogic": False, \
-    "CHA":False, "CHB": False, "sampleRate":200, "duration":1, \
-    "toGet":2000, "COM1":"","COM2":"","BSModel1":"","BSModel2":"", \
+    "CHA":False, "CHB": False, "sampleRate":0, "duration":0, \
+    "toGet":0, "COM1":"","COM2":"","BSModel1":"","BSModel2":"", \
+    "BufferSize": 0, \
     "L0":False,"L1":False,"L2":False,"L3":False,"L4":False,"L5":False,"L6":False,"L7":False  }
 
 summaryDict = {"dataPt":0, "actualDuration":0, "sample_rate":0}
@@ -292,24 +293,24 @@ def stopStreaming():
 
 
 
-def streamData(startTime, duration):
-    chA =[]
-    duration=duration
-    state = True
-    i = 0
-    ser.read(1000)
-    while state:
-        if (time.time()-startTime> duration) or (toGetatATime*i>1000000):
-            print('strttime',startTime)
-            state = False
-        data = bytearray()
-        data = ser.read(toGetatATime)
-        levelData = decodeChannel(data)
-        voltData = list(levelData)
-        # writeToFile(dumpFile,voltData)
-        chA.append(voltData)
-        i = i + 1
-    return chA   
+# def streamData(startTime, duration):
+#     chA =[]
+#     duration=duration
+#     state = True
+#     i = 0
+#     ser.read(2)
+#     while state:
+#         if (time.time()-startTime> duration) or (toGetatATime*i>1000000):
+#             print('strttime',startTime)
+#             state = False
+#         data = bytearray()
+#         data = ser.read(toGetatATime)
+#         levelData = decodeChannel(data)
+#         voltData = list(levelData)
+#         # writeToFile(dumpFile,voltData)
+#         chA.append(voltData)
+#         i = i + 1
+#     return chA   
 
 
 def streamDataDual(startTime, duration):

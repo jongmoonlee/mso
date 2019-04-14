@@ -8,8 +8,12 @@ from pyqtgraph.Qt import QtGui, QtCore
 from pyqtgraph.Point import Point
 from itertools import chain
 import bs_machine
+import configparser
 
 timer = QtCore.QTimer()
+config = configparser.ConfigParser()
+config.read('BSConfig.ini')
+bs_machine.userParam.update({"BufferSize": int(config['DEFAULT']['BufferSize'])})
 
 class Window(QtGui.QWidget):
     EXIT_CODE_REBOOT = -123
@@ -18,14 +22,17 @@ class Window(QtGui.QWidget):
     def __init__(self):
         # global connectedBS
         super(Window, self).__init__()
-        # self.setGeometry(300, 300, 809, 550)
-        self.setGeometry(1800, 700, 809, 550)
+        self.setGeometry(int(config['DEFAULT']['GeomPosX']), \
+            int(config['DEFAULT']['GeomPosY']) , \
+            int(config['DEFAULT']['GeomWidth']), \
+            int(config['DEFAULT']['GeomLength']))
         self.setWindowTitle("BitScope Streaming")
         self.setWindowIcon(QtGui.QIcon('./Images/BitScope.png'))
         self.generateLayout()    
         self.plotList=[]   
         self.plotNameList=[]        
-        self.setzone = 200 
+        self.setzone = int(config['DEFAULT']['SetZone']) 
+        self.sample = int(config['DEFAULT']['PlotSample']) 
         self.target = 0
         self.zoomTarget = len(self.plotList)-1
         self.isDual = False
@@ -53,7 +60,7 @@ class Window(QtGui.QWidget):
         
         self.btnRunning = QtGui.QPushButton("", self)      
         self.btnRunning.setCheckable(True)
-        self.btnRunning.setFixedWidth(25)
+        self.btnRunning.setFixedWidth(int(config['DEFAULT']['LogicBtnWidth']))
         
         self.btnRunning.setStyleSheet('QPushButton {background: transparent}')
         self.btnRunning.setIcon(QtGui.QIcon('./Images/ledOFF.jpeg'))
@@ -90,14 +97,14 @@ class Window(QtGui.QWidget):
         self.btnL7 = QtGui.QPushButton("L7",self)
         
         # too many logic buttons
-        self.btnL0.setFixedWidth(25)
-        self.btnL1.setFixedWidth(25)
-        self.btnL2.setFixedWidth(25)
-        self.btnL3.setFixedWidth(25)
-        self.btnL4.setFixedWidth(25)
-        self.btnL5.setFixedWidth(25)
-        self.btnL6.setFixedWidth(25)
-        self.btnL7.setFixedWidth(25)
+        self.btnL0.setFixedWidth(int(config['DEFAULT']['LogicBtnWidth']))
+        self.btnL1.setFixedWidth(int(config['DEFAULT']['LogicBtnWidth']))
+        self.btnL2.setFixedWidth(int(config['DEFAULT']['LogicBtnWidth']))
+        self.btnL3.setFixedWidth(int(config['DEFAULT']['LogicBtnWidth']))
+        self.btnL4.setFixedWidth(int(config['DEFAULT']['LogicBtnWidth']))
+        self.btnL5.setFixedWidth(int(config['DEFAULT']['LogicBtnWidth']))
+        self.btnL6.setFixedWidth(int(config['DEFAULT']['LogicBtnWidth']))
+        self.btnL7.setFixedWidth(int(config['DEFAULT']['LogicBtnWidth']))
 
         self.btnL0.setCheckable(True)
         self.btnL0.toggle()  
@@ -157,14 +164,14 @@ class Window(QtGui.QWidget):
         self.btnL7.setStyleSheet('QPushButton {background-color: grey; color:black}')
     
         #Sample rate
-        self.samplerateLabel = QtGui.QLabel("Clock setting",self)
+        self.samplerateLabel = QtGui.QLabel("   Clock setting",self)
         self.dialSR = QtGui.QDial(self)
         self.dialSR.setNotchesVisible(True)
-        self.dialSR.setMinimum(130)
-        self.dialSR.setMaximum(16384)
+        self.dialSR.setMinimum(int(config['DEFAULT']['SampleRateMin']))
+        self.dialSR.setMaximum(int(config['DEFAULT']['SampleRateMax']))
         self.spinSR = QtGui.QSpinBox()   
-        self.spinSR.setMinimum(130)
-        self.spinSR.setMaximum(16384)     
+        self.spinSR.setMinimum(int(config['DEFAULT']['SampleRateMin']))
+        self.spinSR.setMaximum(int(config['DEFAULT']['SampleRateMax']))     
         self.dialSR.valueChanged.connect(self.spinSR.setValue)
         self.spinSR.valueChanged.connect(self.dialSR.setValue)
         self.spinSR.valueChanged.connect(self.buttonPressed)
@@ -174,16 +181,16 @@ class Window(QtGui.QWidget):
         self.dialDuration = QtGui.QDial()
         self.dialDuration.setNotchesVisible(True)
         self.spinDuration = QtGui.QSpinBox()   
-        self.dialDuration.setMinimum(0)
-        self.dialDuration.setMaximum(60)
-        self.spinDuration.setMinimum(0)
-        self.spinDuration.setMaximum(60)     
+        self.dialDuration.setMinimum(int(config['DEFAULT']['DurationMin']))
+        self.dialDuration.setMaximum(int(config['DEFAULT']['DurationMax']))
+        self.spinDuration.setMinimum(int(config['DEFAULT']['DurationMin']))
+        self.spinDuration.setMaximum(int(config['DEFAULT']['DurationMax']))     
         self.dialDuration.valueChanged.connect(self.spinDuration.setValue)
         self.spinDuration.valueChanged.connect(self.dialDuration.setValue)
         self.spinDuration.valueChanged.connect(self.buttonPressed)
         
-        self.spinDuration.setMinimum(0)
-        self.spinDuration.setMaximum(60)
+        self.spinDuration.setMinimum(int(config['DEFAULT']['DurationMin']))
+        self.spinDuration.setMaximum(int(config['DEFAULT']['DurationMax']))
         #Buttons
         self.btnTest = QtGui.QPushButton("STOP", self)  
         self.btnTest.setCheckable(True)
@@ -382,6 +389,7 @@ class Window(QtGui.QWidget):
         self.resetAll() if  self.isRunning else None
        
         self.btnTest.setEnabled(True)
+        self.btnFrameUpdate.setEnabled(False)
 
         if bs_machine.userParam["testMode"] == "Mixed":
             self.status.addItem("L0 added") if self.btnL0.isChecked() else None
@@ -413,11 +421,9 @@ class Window(QtGui.QWidget):
 
             self.btnStart.setEnabled(True)
 
-
         
     def buttonToggle(self):
         self.togglePlot() 
-
        
     def updateUserParam(self):
         self.plotNameList=[]
@@ -438,8 +444,7 @@ class Window(QtGui.QWidget):
         sampleRate = self.spinSR.value()
         bs_machine.userParam.update({"sampleRate":sampleRate})
         duartion = self.spinDuration.value()
-        bs_machine.userParam.update({"duration":duartion})  
-        bs_machine.userParam.update({"toGet":4000})
+        bs_machine.userParam.update({"duration":duartion})       
 
     def stop(self):
         bs_machine.stopStreaming()
@@ -457,12 +462,13 @@ class Window(QtGui.QWidget):
         QtCore.QCoreApplication.instance().quit
 
     def timerToggle(self):
-        if self.btnFrameUpdate.text() == "FRMUPDATEON":
-            self.btnFrameUpdate.setText("FRMUPDATEOFF")
+        if self.btnFrameUpdate.text() == "CONT_ON":
+            self.status.addItem('Cont_caputre with a frame rate: '+ (config['DEFAULT']['FrameRate'])+ "/s")
+            self.btnFrameUpdate.setText('CONT_OFF')
             timer.timeout.connect(self.updatePlot)
-            timer.start(70)
+            timer.start(int(config['DEFAULT']['FrameRate']))
         else:
-            self.btnFrameUpdate.setText("FRMUPDATEON")
+            self.btnFrameUpdate.setText("CONT_ON")
             timer.stop()
 
     def stopTest(self): 
@@ -501,7 +507,7 @@ class Window(QtGui.QWidget):
                     self.label.setText("<span style='font-size: 9pt'>pt=%0.1f, \
                         <span style='color: yellow'>CHA=%0.1f</span>, \
                         <span style='color: green'>CHB=%0.1f</span> , \
-                        <span style='color: pu'>Logic=%0.1f</span>" % \
+                        <span style='color: blue'>Logic=%0.1f</span>" % \
                         (self.mousePoint.x(), self.plotData1[self.index], \
                         self.plotData2[self.index], self.plotData3[self.index])) 
                 elif bs_machine.userParam["testMode"][0:4] == "Dual":
@@ -522,7 +528,7 @@ class Window(QtGui.QWidget):
    
    
     def update(self,target):
-        self.region.setZValue(100)
+        self.region.setZValue(int(config['DEFAULT']['SetZValue']))
         minX, maxX = self.region.getRegion()
         self.plotList[self.target].setXRange(minX, maxX, padding=0)  
 
@@ -570,7 +576,7 @@ class Window(QtGui.QWidget):
         self.stop()      
 
     def resetAll(self):
-        print('reset presesd',self.plotNameList) 
+        # print('reset presesd',self.plotNameList) 
         if len(self.plotList) > 0:
             for cnt in range(len(self.plotList)):
                 self.win.removeItem(self.plotList[cnt]) 
@@ -617,13 +623,13 @@ class Window(QtGui.QWidget):
 
           
         elif bs_machine.userParam["testMode"][0:6] == "Single" and self.plotNameList[0]=="CHA":
-            self.plotList[0].plot(data["chA"], pen='ye')
-            self.plotList[len(self.plotNameList)-1].plot(data["chA"], pen='ye')
+            self.plotList[0].plot(data["chA"][int(config['DEFAULT']['RubbishSize']):], pen='ye')
+            self.plotList[len(self.plotNameList)-1].plot(data["chA"][int(config['DEFAULT']['RubbishSize']):], pen='ye')
             for cnt in data["chA"]:
                 self.plotData1.append(cnt)
         else:
-            self.plotList[0].plot(data["chA"], pen='g')
-            self.plotList[len(self.plotNameList)-1].plot(data["chA"], pen='g')
+            self.plotList[0].plot(data["chA"][int(config['DEFAULT']['RubbishSize']):], pen='g')
+            self.plotList[len(self.plotNameList)-1].plot(data["chA"][int(config['DEFAULT']['RubbishSize']):], pen='g')
             for cnt in data["chA"]:
                 self.plotData1.append(cnt)
 
@@ -645,25 +651,27 @@ class Window(QtGui.QWidget):
         bs_machine.startStreaming() if self.isRunning == False else None
       
         if self.spinDuration.value()>0:
-            ## DUAL CH with Summary
+            ## Stream on during capture
             self.btnRunning.setIcon(QtGui.QIcon('./Images/ledON.jpeg')) 
             self.plotRealDual(bs_machine.getStreamDual())
             self.btnRunning.setIcon(QtGui.QIcon('./Images/ledOFF.jpeg'))                
             self.btnStart.setText("START")  
             self.isRunning = False
             self.btnUpdate.setEnabled(False)
+            self.btnFrameUpdate.setEnabled(False)
         else:
-            ## DUAL CH wite NO Summary
-            self.plotRealDual(bs_machine.getStreamFast(6000))
+            ## Stream on while running
+            self.plotRealDual(bs_machine.getStreamFast(int(config['DEFAULT']['FastSampleSize'])))
             self.btnStart.setText("STOP")
             self.btnRunning.setIcon(QtGui.QIcon('./Images/ledON.jpeg'))
             self.isRunning = True
             self.btnUpdate.setEnabled(True)
+            self.btnFrameUpdate.setEnabled(True)
 
 
     def updatePlot(self):
 
-        print('isRunning',self.isRunning)
+        # print('isRunning',self.isRunning)
 
         if self.isRunning:
             self.status.clear()
@@ -681,13 +689,13 @@ class Window(QtGui.QWidget):
             # DUAL CHANNEL CAPTURE
             if bs_machine.userParam["isDual"]:
                 ## DUAL CH wite NO Summary           
-                self.plotRealDual(bs_machine.getStreamFast(2000))
+                self.plotRealDual(bs_machine.getStreamFast(int(config['DEFAULT']['ToGetAtATime'])))
                 self.btnRunning.setIcon(QtGui.QIcon('./Images/ledON.jpeg'))
                 self.isRunning = True
 
             # SINGLE CHANNEL CAPTURE        
             else:            
-                self.plotRealDual(bs_machine.getStreamFast(2000))
+                self.plotRealDual(bs_machine.getStreamFast(int(config['DEFAULT']['ToGetAtATime'])))
                 self.btnStart.setText("STOP")
                 self.btnRunning.setIcon(QtGui.QIcon('./Images/ledON.jpeg'))
                 self.isRunning = True
@@ -719,8 +727,7 @@ class Window(QtGui.QWidget):
             bs_machine.connectBS()
             self.isInitialRunExecuted = True
   
-        if self.btnStart.text() == "START":            
-            self.sample = 5000
+        if self.btnStart.text() == "START":   
             
             self.addPlot()                   
             self.captureSigUpdatePlot()
@@ -731,11 +738,14 @@ class Window(QtGui.QWidget):
                 str(bs_machine.summaryDict["dataPt"]) + " collected")
             self.status.addItem("ActualDuration: " + \
                 "{0:.2f}".format(bs_machine.summaryDict["actualDuration"]) + "s")
+            self.status.addItem("BufferSize: " + str(bs_machine.userParam["BufferSize"]/1000000)+"M")
             
             if bs_machine.userParam["duration"]>0:
                 self.btnStart.setText("START")
+                self.btnFrameUpdate.setEnabled(False)
             else:
                 self.btnStart.setText("STOP")
+                self.btnFrameUpdate.setEnabled(True)
 
         else:
             self.stop()

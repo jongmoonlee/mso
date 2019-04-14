@@ -225,6 +225,7 @@ class Window(QtGui.QWidget):
         self.btnQuit = QtGui.QPushButton("QUIT", self)
         self.btnQuit.clicked.connect(QtCore.QCoreApplication.instance().quit)  
         self.status = QtGui.QListWidget()
+        self.status.setStyleSheet('QListWidget {font-size: 10px}')
         self.progressBar = QtGui.QProgressBar(self)
         self.progressBar.setStyleSheet('QProgressBar::chunk {background-color: #7799AA}')
         # Layout management
@@ -329,7 +330,7 @@ class Window(QtGui.QWidget):
         self.btnChB.setEnabled(True)   
 
         
-        if mode.startswith("Dual") or mode.startswith("Mixed"):
+        if mode == "Dual" or mode=="Mixed":
             self.status.clear() 
             self.plotNameList= []
             self.btnChA.setCheckable(True)
@@ -346,17 +347,30 @@ class Window(QtGui.QWidget):
             bs_machine.userParam.update({"CHA":True})
             bs_machine.userParam.update({"CHB":True})
 
-            self.btnL0.setEnabled(True) if mode.startswith("Mixed") else None
-            self.btnL1.setEnabled(True) if mode.startswith("Mixed") else None
-            self.btnL2.setEnabled(True) if mode.startswith("Mixed") else None
-            self.btnL3.setEnabled(True) if mode.startswith("Mixed") else None
-            self.btnL4.setEnabled(True) if mode.startswith("Mixed") else None
-            self.btnL5.setEnabled(True) if mode.startswith("Mixed") else None
-            self.btnL6.setEnabled(True) if mode.startswith("Mixed") else None
-            self.btnL7.setEnabled(True) if mode.startswith("Mixed") else None
+            self.btnL0.setEnabled(True) if mode.startswith("Mixed") else bs_machine.userParam.update({"L0": False})
+            self.btnL1.setEnabled(True) if mode.startswith("Mixed") else bs_machine.userParam.update({"L1": False})
+            self.btnL2.setEnabled(True) if mode.startswith("Mixed") else bs_machine.userParam.update({"L2": False})
+            self.btnL3.setEnabled(True) if mode.startswith("Mixed") else bs_machine.userParam.update({"L3": False})
+            self.btnL4.setEnabled(True) if mode.startswith("Mixed") else bs_machine.userParam.update({"L4": False})
+            self.btnL5.setEnabled(True) if mode.startswith("Mixed") else bs_machine.userParam.update({"L5": False})
+            self.btnL6.setEnabled(True) if mode.startswith("Mixed") else bs_machine.userParam.update({"L6": False})
+            self.btnL7.setEnabled(True) if mode.startswith("Mixed") else bs_machine.userParam.update({"L7": False})
+
+            self.btnL0.toggle() if self.btnL0.isChecked() else None
+            self.btnL1.toggle() if self.btnL1.isChecked() else None
+            self.btnL2.toggle() if self.btnL2.isChecked() else None
+            self.btnL3.toggle() if self.btnL3.isChecked() else None
+            self.btnL4.toggle() if self.btnL4.isChecked() else None
+            self.btnL5.toggle() if self.btnL5.isChecked() else None
+            self.btnL6.toggle() if self.btnL6.isChecked() else None
+            self.btnL7.toggle() if self.btnL7.isChecked() else None
+
+            self.dialSR.setMinimum(int(config['DEFAULT']['DualMin']))
+            self.spinSR.setMinimum(int(config['DEFAULT']['DualMin']))
+            
  
 
-        elif mode.startswith("Single"):
+        elif mode == "SingleFast":
             self.status.clear() 
             self.plotNameList= []
             self.status.addItem("Running in " + mode + " mode") 
@@ -376,9 +390,17 @@ class Window(QtGui.QWidget):
                 bs_machine.userParam.update({"CHB":True})              
                 self.status.addItem(str(self.plotNameList))
                 self.btnChA.toggle() if self.btnChA.isChecked() else None
-        else:  
-            print(mode,"single mode selected")            
-        self.btnStart.setEnabled(True)    
+            self.dialSR.setMinimum(int(config['DEFAULT']['SingleFastMin']))
+            self.spinSR.setMinimum(int(config['DEFAULT']['SingleFastMin'])) 
+        elif mode == "SingleMacro":  
+            print(mode,"single mode selected")
+            self.dialSR.setMinimum(int(config['DEFAULT']['SingleMacroMin']))
+            self.spinSR.setMinimum(int(config['DEFAULT']['SingleMacroMin'])) 
+        else:
+            self.dialSR.setMinimum(int(config['DEFAULT']['DualMacroMin']))
+            self.spinSR.setMinimum(int(config['DEFAULT']['DualMacroMin']))            
+        self.btnStart.setEnabled(True)
+           
 
     def buttonPressed(self): 
 
@@ -410,14 +432,14 @@ class Window(QtGui.QWidget):
             self.plotNameList.append("L6") if self.btnL6.isChecked() else None
             self.plotNameList.append("L7") if self.btnL7.isChecked() else None    
 
-            bs_machine.userParam.update({"L0": True}) if self.btnL0.isChecked() else None
-            bs_machine.userParam.update({"L1": True}) if self.btnL1.isChecked() else None
-            bs_machine.userParam.update({"L2": True}) if self.btnL2.isChecked() else None
-            bs_machine.userParam.update({"L3": True}) if self.btnL3.isChecked() else None
-            bs_machine.userParam.update({"L4": True}) if self.btnL4.isChecked() else None
-            bs_machine.userParam.update({"L5": True}) if self.btnL5.isChecked() else None
-            bs_machine.userParam.update({"L6": True}) if self.btnL6.isChecked() else None
-            bs_machine.userParam.update({"L7": True}) if self.btnL7.isChecked() else None           
+            bs_machine.userParam.update({"L0": True}) if self.btnL0.isChecked() else bs_machine.userParam.update({"L0": False})
+            bs_machine.userParam.update({"L1": True}) if self.btnL1.isChecked() else bs_machine.userParam.update({"L1": False})
+            bs_machine.userParam.update({"L2": True}) if self.btnL2.isChecked() else bs_machine.userParam.update({"L2": False})
+            bs_machine.userParam.update({"L3": True}) if self.btnL3.isChecked() else bs_machine.userParam.update({"L3": False})
+            bs_machine.userParam.update({"L4": True}) if self.btnL4.isChecked() else bs_machine.userParam.update({"L4": False})
+            bs_machine.userParam.update({"L5": True}) if self.btnL5.isChecked() else bs_machine.userParam.update({"L5": False})
+            bs_machine.userParam.update({"L6": True}) if self.btnL6.isChecked() else bs_machine.userParam.update({"L6": False})
+            bs_machine.userParam.update({"L7": True}) if self.btnL7.isChecked() else bs_machine.userParam.update({"L7": False})           
 
             self.btnStart.setEnabled(True)
 

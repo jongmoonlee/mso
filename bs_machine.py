@@ -7,6 +7,7 @@ import time
 import struct
 import sys
 from itertools import chain
+import ctypes
 
 
 # fileName = "unpacked" + str(time.time())
@@ -19,7 +20,11 @@ val =''
 duration=3
 serWaiting = 0
 toGetatATime = 4096
-ser = serial.tools.list_ports.comports()[0]
+try:
+    ser = serial.tools.list_ports.comports()[0]
+except:
+    ctypes.windll.user32.MessageBoxW(0, "No BitScope FOUND!!! Please check your connection..", "NO BS Error", 1)
+
 com =''
 CHA = []; CHB= []
 
@@ -55,8 +60,11 @@ def findBS():
         comPort.append(tempCom) if tempStr.startswith(b'BS') else None
         connectedBS.append((str(tempStr)[1:]).strip("'").strip("b")) if tempStr.startswith(b'BS') else None            
 
-    userParam.update({"COM1":comPort[0]})
-    userParam.update({"BSModel1":connectedBS[0]})
+    try:
+        userParam.update({"COM1":comPort[0]})
+        userParam.update({"BSModel1":connectedBS[0]})
+    except:
+        ctypes.windll.user32.MessageBoxW(0, "No BitScope FOUND!!! Please check your connection..", "NO BS Error", 1)
 
     if len(connectedBS) > 1:
         userParam.update({"COM2":comPort[1]})
@@ -188,7 +196,7 @@ def getToRange(fromRange, toRange):
     return lambda v : round((tr[0] + slope * float(v - fr[0])), 3)
 
 #############################################################
-###### DECODING #############################################
+###### DECODE CHANNEL #######################################
 
 def decodeChannel(data):    
 
@@ -205,7 +213,7 @@ def decodeChannel(data):
         index = unpacked[0:130].index(token)
         unpacked = unpacked[index:] 
         # writeToFile(dumpFile,unpacked)
-        chA =[]; chB=[]; logic=[]
+        chA =[]; chB=[]
         for cnt in range(len(unpacked)):
             if cnt%4==2:
                 chA.append(unpacked[cnt]) 
@@ -243,15 +251,25 @@ def decodeChannel(data):
             cnt =+5
         return chA, chB, logic
 
-
-def decode1ChMacro(data):
+###### OTEHR DECODIGNL #######################################
+def decodeMacro(data):
     unpackArg = "<" + str(int(len(data) / 2)) + "h"
     unpacked = list(struct.unpack(unpackArg, data))
     for i in unpacked:
         a = (i & 0x00ff) >> 4
         b = (i & 0xff00) << 4
         i = a + b
-    return unpacked
+   
+    if userParam["testMode"] == "SingleMacro":
+        return list(unpacked)
+    elif userParam["testMode"] == "DualMacro": 
+        chA =[]; chB=[]
+        for cnt in range(len(unpacked)):
+            if cnt%2==1:
+                chA.append(unpacked[cnt]) 
+            elif cnt%2==0:
+                chB.append(unpacked[cnt])
+        return chA, chB
 
 
 def decode2ChMacro(data):
@@ -260,6 +278,8 @@ def decode2ChMacro(data):
     unpacked = struct.unpack(unpackArg, data)
     rmToken = lambda x : x & ~0x000f
     formatted = map(rmToken, unpacked)
+    print('decode 2ch macro')
+    print(list(formatted)[0:1000])
     return list(formatted)
 
 def writeToFile(file, data):
@@ -276,8 +296,7 @@ def writeToFile(file, data):
 
 def startStreaming():
     print('strm started')
-    issueWait("T")    
-    time.sleep(0.5)
+    issueWait("T")
     startTime = float(time.time())
     return startTime
 
@@ -291,33 +310,12 @@ def stopStreaming():
     stopTime = float(time.time())
     return stopTime
 
-
-
-# def streamData(startTime, duration):
-#     chA =[]
-#     duration=duration
-#     state = True
-#     i = 0
-#     ser.read(2)
-#     while state:
-#         if (time.time()-startTime> duration) or (toGetatATime*i>1000000):
-#             print('strttime',startTime)
-#             state = False
-#         data = bytearray()
-#         data = ser.read(toGetatATime)
-#         levelData = decodeChannel(data)
-#         voltData = list(levelData)
-#         # writeToFile(dumpFile,voltData)
-#         chA.append(voltData)
-#         i = i + 1
-#     return chA   
-
-
+###########  GET STREM SLOW ############################### 
 def streamDataDual(startTime, duration):
     duration=duration
     state = True
     i = 0
-    # ser.read(1000)
+   
     chAA =[]; chBB= []; logicC =[]
     while state:
         if (time.time()-startTime> duration) or (toGetatATime*i>1000000):
@@ -326,11 +324,18 @@ def streamDataDual(startTime, duration):
         data = bytearray()
         data = ser.read(toGetatATime)
 
-        if userParam["testMode"][0:6] == "Single":
+        if userParam["testMode"] == "SingleFast":
             chA = decodeChannel(data)
             chAA.append(chA)
-        elif userParam["testMode"][0:4]=="Dual":
+        elif userParam["testMode"] == "SingleMacro":
+            chA = decodeMacro(data)
+            chAA.append(chA)
+        elif userParam["testMode"]=="Dual":
             chA,chB = decodeChannel(data)
+            chAA.append(chA)
+            chBB.append(chB)
+        elif userParam["testMode"]=="DualMacro":
+            chA,chB = decodeMacro(data)
             chAA.append(chA)
             chBB.append(chB)
         else:
@@ -352,7 +357,7 @@ def streamDataDual(startTime, duration):
 
 
 
-
+###########  GET STREM FAST ###############################  
 def getStreamFast(sample):
     startTime = time.time()
     data = bytearray()
@@ -361,8 +366,17 @@ def getStreamFast(sample):
         chA,chB,logic = decodeChannel(data)
         chDict ={"chA":chA, "chB":chB, "logic":logic}
 
-    elif userParam["testMode"][0:4]=="Dual":
+    elif userParam["testMode"]=="Dual":
         chA,chB = decodeChannel(data)
+        chDict ={"chA":chA, "chB":chB}
+
+    elif userParam["testMode"]=="SingleMacro":
+        chA = decodeMacro(data)
+        chB =[]
+        chDict ={"chA":chA, "chB":chB}
+
+    elif userParam["testMode"]=="DualMacro":
+        chA, chB = decodeMacro(data)        
         chDict ={"chA":chA, "chB":chB}
 
     else:
